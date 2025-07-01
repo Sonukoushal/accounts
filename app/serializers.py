@@ -39,18 +39,18 @@ class SignupSerializer(serializers.ModelSerializer):
 User = get_user_model()
 
 class CustomLoginSerializer(serializers.Serializer):
-    login = serializers.CharField()
+    email= serializers.CharField()
     password = serializers.CharField(write_only=True)
 
     def validate(self, data):
-        login = data.get("login")
+        email = data.get("email")
         password = data.get("password")
 
         try:
-            user = User.objects.get(email=login)
+            user = User.objects.get(email=email)
         except User.DoesNotExist:
             try:
-                user = User.objects.get(phone=login)
+                user = User.objects.get(phone=email)
             except User.DoesNotExist:
                 raise serializers.ValidationError("Invalid email or phone")
 
