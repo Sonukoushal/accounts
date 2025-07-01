@@ -98,38 +98,43 @@ class SendOTPSerializer(serializers.Serializer):
         )
         return {"message": "OTP sent to your email."}
     
-class VerifyOTPAndResetPasswordSerializer(serializers.Serializer):
-    email = serializers.EmailField()
+class OTPVerifySerializer(serializers.Serializer):
     otp = serializers.CharField()
-    new_password = serializers.CharField(write_only=True)
-    confirm_password = serializers.CharField(write_only=True)
 
     def validate(self, attrs):
-        email = attrs.get("email")
         otp = attrs.get("otp")
-        new_password = attrs.get("new_password")
-        confirm_password = attrs.get("confirm_password")
+        email = self.context.get("email")  # context se email mila
 
-        if new_password != confirm_password:
-            raise serializers.ValidationError("Passwords do not match")
+        if not email:
+            raise serializers.ValidationError("Email not provided")
 
         try:
             otp_obj = PasswordResetOTP.objects.filter(email=email, otp=otp).latest('created_at')
         except PasswordResetOTP.DoesNotExist:
-            raise serializers.ValidationError("Invalid OTP or Email")
+            raise serializers.ValidationError("Invalid OTP")
 
-        # 10 minutes expiry
         if timezone.now() - otp_obj.created_at > timedelta(minutes=10):
             raise serializers.ValidationError("OTP expired")
 
         return attrs
 
+class SetNewPasswordSerializer(serializers.Serializer):
+    new_password = serializers.CharField(write_only=True)
+    confirm_password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['confirm_password']:
+            raise serializers.ValidationError("Passwords do not match")
+        return attrs
+
     def create(self, validated_data):
-        user = CustomUser.objects.get(email=validated_data['email'])
+        email = self.context.get("email")
+        if not email:
+            raise serializers.ValidationError("Email not provided")
+
+        user = CustomUser.objects.get(email=email)
         user.set_password(validated_data['new_password'])
         user.save()
 
-        # Optionally, delete OTP from DB
-        PasswordResetOTP.objects.filter(email=validated_data['email']).delete()
-
-        return {"message": "Password reset successful"}
+        PasswordResetOTP.objects.filter(email=email).delete()
+        return user
