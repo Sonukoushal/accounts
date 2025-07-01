@@ -142,23 +142,27 @@ class SetNewPasswordSerializer(serializers.Serializer):
         return user
 
 class ResendOTPSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
     def create(self, validated_data):
-        email = self.context['email']  # context se mila
+        email = validated_data['email']
         otp = str(random.randint(100000, 999999))
 
-        # DB me update ya create
+        # DB me OTP update ya create karo
         PasswordResetOTP.objects.update_or_create(
             email=email,
-            defaults={'otp': otp, 'created_at': timezone.now()}
+            defaults={
+                'otp': otp,
+                'created_at': timezone.now()
+            }
         )
 
-        # Email bhejna
+        # OTP Email bhejna
         send_mail(
-            subject="Your OTP for Password Reset",
-            message=f"Your new OTP is: {otp}",
+            subject="Your New OTP",
+            message=f"Your OTP is: {otp}",
             from_email="yourprojectemail@gmail.com",
-            recipient_list=[email],
+            recipient_list=[email]
         )
 
         return {"message": "OTP resent successfully."}
-
