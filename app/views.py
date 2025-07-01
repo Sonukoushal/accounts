@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import SignupSerializer, CustomLoginSerializer
+from .serializers import SignupSerializer, CustomLoginSerializer, ResendOTPSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .serializers import SendOTPSerializer, OTPVerifySerializer,SetNewPasswordSerializer
 from .models import PasswordResetOTP,CustomUser
@@ -75,3 +75,17 @@ class SetNewPasswordView(APIView):
             return Response({'message': 'Password reset successful'}, status=status.HTTP_200_OK)
         except CustomUser.DoesNotExist:
             return Response({'error': 'User not found'}, status=status.HTTP_400_BAD_REQUEST)
+
+class ResendOTPView(APIView):
+    def post(self, request):
+        # Email le lo request se (ya session ya authenticated user se)
+        email = request.data.get('email')  # ya request.user.email agar login user hai
+
+        if not email:
+            return Response({"error": "Email is required in request"}, status=400)
+
+        serializer = ResendOTPSerializer(data={}, context={'email': email})
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "OTP resent successfully."}, status=200)
+        return Response(serializer.errors, status=400)
