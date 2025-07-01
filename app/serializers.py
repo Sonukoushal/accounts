@@ -87,7 +87,8 @@ class SendOTPSerializer(serializers.Serializer):
         otp = str(random.randint(100000, 999999))
 
         # Save to DB
-        PasswordResetOTP.objects.create(email=email, otp=otp)
+        otp_instance=PasswordResetOTP.objects.create(email=email, otp=otp)
+        
 
         # Send email
         send_mail(
@@ -96,7 +97,8 @@ class SendOTPSerializer(serializers.Serializer):
             from_email="yourprojectemail@gmail.com",  # same as EMAIL_HOST_USER
             recipient_list=[email],
         )
-        return {"message": "OTP sent to your email."}
+        #return {"message": "OTP sent to your email."}
+        return otp_instance
     
 class OTPVerifySerializer(serializers.Serializer):
     otp = serializers.CharField()
