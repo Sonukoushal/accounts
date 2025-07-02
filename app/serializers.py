@@ -111,10 +111,12 @@ class OTPVerifySerializer(serializers.Serializer):
             raise serializers.ValidationError("Email not provided")
 
         try:
+            # Sabse latest OTP le rahe hain email + otp ke saath
             otp_obj = PasswordResetOTP.objects.filter(email=email, otp=otp).latest('created_at')
         except PasswordResetOTP.DoesNotExist:
             raise serializers.ValidationError("Invalid OTP")
 
+        # 10 minute expiry check
         if timezone.now() - otp_obj.created_at > timedelta(minutes=10):
             raise serializers.ValidationError("OTP expired")
 
@@ -148,14 +150,8 @@ class ResendOTPSerializer(serializers.Serializer):
         email = validated_data['email']
         otp = str(random.randint(100000, 999999))
 
-        # DB me OTP update ya create karo
-        PasswordResetOTP.objects.update_or_create(
-            email=email,
-            defaults={
-                'otp': otp,
-                'created_at': timezone.now()
-            }
-        )
+        PasswordResetOTP.objects.filter(email=email).delete()
+        PasswordResetOTP.objects.create(email=email, otp=otp)
 
         # OTP Email bhejna
         send_mail(
@@ -165,4 +161,4 @@ class ResendOTPSerializer(serializers.Serializer):
             recipient_list=[email]
         )
 
-        return {"message": "OTP resent successfully."}
+        return {"message": "OTP resent successfully."}                                                       
