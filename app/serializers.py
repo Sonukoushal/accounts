@@ -1,14 +1,12 @@
 from rest_framework import serializers
 from .models import CustomUser
-from rest_framework.exceptions import AuthenticationFailed
 from django.contrib.auth import get_user_model
-from django.contrib.auth.hashers import check_password
 from rest_framework_simplejwt.tokens import RefreshToken  
 from .models import PasswordResetOTP
 from django.core.mail import send_mail
 from django.utils import timezone
 import random
-from .models import CustomUser, PasswordResetOTP
+from .models import CustomUser, PasswordResetOTP, OTPRequestHistory, LoginHistory
 from datetime import timedelta
 
 
@@ -33,6 +31,11 @@ class SignupSerializer(serializers.ModelSerializer):
         validated_data.pop('confirm_password')  # Don't save confirm_password
         user = CustomUser.objects.create_user(**validated_data)
         return user
+    
+class UserListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ['id', 'email', 'name', 'is_superuser']
 
 
 # ------------------- Custom Login Serializer -------------------
@@ -100,8 +103,30 @@ class SendOTPSerializer(serializers.Serializer):
         #return {"message": "OTP sent to your email."}
         return otp_instance
     
+
+
+class ResendOTPSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def create(self, validated_data):
+        email = validated_data['email']
+        otp = str(random.randint(100000, 999999))
+
+        PasswordResetOTP.objects.filter(email=email).delete()
+        PasswordResetOTP.objects.create(email=email, otp=otp)
+
+        # OTP Email bhejna
+        send_mail(
+            subject="Your New OTP",
+            message=f"Your OTP is: {otp}",
+            from_email="yourprojectemail@gmail.com",
+            recipient_list=[email]
+        )
+
+        return {"message": "OTP resent successfully."}    
+
 class OTPVerifySerializer(serializers.Serializer):
-    otp = serializers.CharField()
+    otp = serializers.IntegerField()
 
     def validate(self, attrs):
         otp = attrs.get("otp")
@@ -111,16 +136,15 @@ class OTPVerifySerializer(serializers.Serializer):
             raise serializers.ValidationError("Email not provided")
 
         try:
-            # Sabse latest OTP le rahe hain email + otp ke saath
             otp_obj = PasswordResetOTP.objects.filter(email=email, otp=otp).latest('created_at')
         except PasswordResetOTP.DoesNotExist:
             raise serializers.ValidationError("Invalid OTP")
 
-        # 10 minute expiry check
         if timezone.now() - otp_obj.created_at > timedelta(minutes=10):
             raise serializers.ValidationError("OTP expired")
 
         return attrs
+
 
 class SetNewPasswordSerializer(serializers.Serializer):
     new_password = serializers.CharField(write_only=True)
@@ -143,22 +167,34 @@ class SetNewPasswordSerializer(serializers.Serializer):
         PasswordResetOTP.objects.filter(email=email).delete()
         return user
 
-class ResendOTPSerializer(serializers.Serializer):
-    email = serializers.EmailField()
+# Reusable for both make and revoke
+class SuperUserActionSerializer(serializers.Serializer):
+    user_id = serializers.IntegerField()
 
+    def validate(self, data):
+        request_user = self.context['request'].user
+        if not request_user.is_authenticated or not request_user.is_superuser_custom:
+            raise serializers.ValidationError("Only superusers can perform this action.")
+        return data
+    
     def create(self, validated_data):
-        email = validated_data['email']
-        otp = str(random.randint(100000, 999999))
+        user_id = validated_data['user_id']
+        try:
+            user = CustomUser.objects.get(id=user_id)
+            user.is_superuser_custom = True
+            user.save()
+            return user
+        except CustomUser.DoesNotExist:
+            raise serializers.ValidationError("User not found.")
+        
+class OTPRequestHistorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OTPRequestHistory
+        fields = ['id', 'user', 'requested_at']
 
-        PasswordResetOTP.objects.filter(email=email).delete()
-        PasswordResetOTP.objects.create(email=email, otp=otp)
+class LoginHistorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LoginHistory
+        fields = ['id', 'user', 'login_time', 'ip_address', 'user_agent']
 
-        # OTP Email bhejna
-        send_mail(
-            subject="Your New OTP",
-            message=f"Your OTP is: {otp}",
-            from_email="yourprojectemail@gmail.com",
-            recipient_list=[email]
-        )
-
-        return {"message": "OTP resent successfully."}                                                       
+                                             
