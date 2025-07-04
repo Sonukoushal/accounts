@@ -49,5 +49,30 @@ class LoginHistory(models.Model):
 
     def __str__(self):
         return f"{self.user.email} - Login at {self.login_time}"
+    
+
+    #---------------Product_tables---------------------------
+class Product(models.Model):
+        image= models.ImageField(upload_to='product_images/')
+        brand_name=models.CharField(max_length=100)
+        product_name=models.CharField(max_length=100)
+        product_id=models.CharField(max_length=20,unique=True)
+        price=models.DecimalField(max_digits=10,decimal_places=2)
+        quantity=models.IntegerField(default=5)
+        description=models.TextField()
+        specification=models.JSONField()
+
+        def __str__(self):
+          return self.product_name
+
+class Cart(models.Model):
+         user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+         product = models.ForeignKey('Product', on_delete=models.CASCADE)
+         quantity = models.PositiveIntegerField(default=1)
+         added_at = models.DateTimeField(auto_now_add=True)
+
+         def __str__(self):
+            return f"{self.user.email} - {self.product.product_name} x {self.quantity}"
+
 
     

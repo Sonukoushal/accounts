@@ -1,7 +1,8 @@
 from django.urls import path
-from .views import SignupView, CustomLoginView ,SendOTPView, VerifyOTPView, SetNewPasswordView,ResendOTPView,MakeSuperUserView,UserListView, RevokeSuperUserView,OTPRequestHistoryView
+from .views import SignupView, CustomLoginView ,SendOTPView, VerifyOTPView, SetNewPasswordView,ResendOTPView,MakeSuperUserView,UserListView, RevokeSuperUserView,OTPRequestHistoryView,ProductView,CartView
 from rest_framework_simplejwt.views import TokenRefreshView
-
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     
@@ -16,6 +17,13 @@ urlpatterns = [
     path('revokesuperuser/', RevokeSuperUserView.as_view()),
     path('users/', UserListView.as_view(), name='user-list'),
     path('loginhistory/',OTPRequestHistoryView.as_view()),
-    path('otphistory/',OTPRequestHistoryView.as_view())
+    path('otphistory/',OTPRequestHistoryView.as_view()),
+
+    #----------------------------product---------------
+    path("product/",ProductView.as_view()),
+    path("Cart/",CartView.as_view())
+
     
 ]
+
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

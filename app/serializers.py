@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import CustomUser
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken  
-from .models import PasswordResetOTP
+from .models import PasswordResetOTP , Product ,Cart
 from django.core.mail import send_mail
 from django.utils import timezone
 import random
@@ -197,4 +197,32 @@ class LoginHistorySerializer(serializers.ModelSerializer):
         model = LoginHistory
         fields = ['id', 'user', 'login_time', 'ip_address', 'user_agent']
 
+
+#-------------------ProductSerializer------------------------------
+class ProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = [
+            'id',
+            'image',
+            'brand_name',
+            'product_name',
+            'product_id',
+            'price',
+            'quantity',
+            'description',
+            'specification'
+        ]
+
+class CartSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Cart
+        fields = ['id', 'user', 'product', 'added_at']
+
+    def validate(self, attrs):
+        user = attrs.get('user')
+        product = attrs.get('product')
+        if Cart.objects.filter(user=user, product=product).exists():
+            raise serializers.ValidationError("Product already in cart for this user.")
+        return attrs
                                              

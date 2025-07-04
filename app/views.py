@@ -1,14 +1,17 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import SignupSerializer, CustomLoginSerializer, ResendOTPSerializer
+from .serializers import SignupSerializer, CustomLoginSerializer, ResendOTPSerializer,ProductSerializer,CartSerializer
 from .serializers import SendOTPSerializer,UserListSerializer,SuperUserActionSerializer,SetNewPasswordSerializer, OTPVerifySerializer, OTPRequestHistorySerializer, LoginHistorySerializer
-from .models import PasswordResetOTP,CustomUser,OTPRequestHistory, LoginHistory
+from .models import PasswordResetOTP,CustomUser,OTPRequestHistory, LoginHistory,Product,Cart
 from django.utils import timezone
 from datetime import timedelta
 from rest_framework_simplejwt.tokens import RefreshToken
 from .permissions import IsSuperUserOnly
 from .utils import get_client_ip 
+from rest_framework.permissions import IsAuthenticated
+from .permissions import IsSuperUserOnly
+
 
 
 
@@ -149,3 +152,49 @@ class LoginHistoryView(APIView):
         logs = LoginHistory.objects.all().order_by('-login_time')
         serializer = LoginHistorySerializer(logs, many=True)
         return Response(serializer.data)
+    
+#--------------product-----------------
+
+class ProductView(APIView):
+    permission_classes = [IsAuthenticated]  # Har user ke liye auth required
+
+    def get_permissions(self):
+        # GET ke liye normal user, POST ke liye superuser
+        if self.request.method == 'POST':
+            return [IsAuthenticated(), IsSuperUserOnly()]
+        return [IsAuthenticated()]
+
+    def get(self, request):
+        products = Product.objects.all()
+        serializer = ProductSerializer(products, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        serializer = ProductSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Product created successfully."}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class CartView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsAuthenticated(), IsSuperUserOnly()]
+        return [IsAuthenticated()]
+
+    def get(self, request):
+        # Only get carts of the logged-in user
+        carts = Cart.objects.filter(user=request.user)
+        serializer = CartSerializer(carts, many=True)
+        return Response(serializer.data, status=200)
+
+    def post(self, request):
+        data = request.data.copy()
+        data['user'] = request.user.id  # Automatically add user
+        serializer = CartSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Product added to cart"}, status=201)
+        return Response(serializer.errors, status=400)
