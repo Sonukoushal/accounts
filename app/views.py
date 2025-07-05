@@ -190,13 +190,11 @@ class CartView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        data = request.data.copy()
-        data['user'] = request.user.id  # Automatically add user
-        serializer = CartSerializer(data=data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"message": "Product added to cart"}, status=201)
-        return Response(serializer.errors, status=400)
+       serializer = CartSerializer(data=request.data, context={'request': request})
+       if serializer.is_valid():
+        serializer.save()
+        return Response({"message": "Product added to cart"}, status=201)
+       return Response(serializer.errors, status=400)
     
 class CartDeleteView(APIView):
     permission_classes = [IsAuthenticated]

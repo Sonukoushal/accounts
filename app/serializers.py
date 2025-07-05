@@ -219,19 +219,22 @@ class ProductImageSerializer(serializers.ModelSerializer):
         fields = ['id', 'product', 'image', 'uploaded_at']
 
 class CartSerializer(serializers.ModelSerializer):
-    product = ProductSerializer(read_only=True)  # GET ke liye full product detail
-    product_id = serializers.PrimaryKeyRelatedField(
-        queryset=Product.objects.all(), write_only=True, source='product'  # POST ke liye
-    )
-
     class Meta:
         model = Cart
-        fields = ['id', 'product', 'product_id', 'quantity', 'added_at']
+        fields = ['id', 'user', 'product', 'product_id', 'added_at']
+        read_only_fields = ['user']  
 
     def validate(self, attrs):
-        user = attrs.get('user')
+        request = self.context.get('request')
+        user = request.user
         product = attrs.get('product')
         if Cart.objects.filter(user=user, product=product).exists():
-            raise serializers.ValidationError("Product already in cart for this user.")
+            raise serializers.ValidationError("Product already in cart.")
         return attrs
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        user = request.user
+        validated_data['user'] = user  
+        return super().create(validated_data)
                                              
