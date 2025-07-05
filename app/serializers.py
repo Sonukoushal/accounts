@@ -229,6 +229,7 @@ class CartSerializer(serializers.ModelSerializer):
         fields = ['id', 'product', 'product_id', 'quantity', 'added_at']
 
     def validate(self, attrs):
+        user = attrs.get('user')
         product = attrs.get('product')
         if Cart.objects.filter(user=user, product=product).exists():
             raise serializers.ValidationError("Product already in cart for this user.")
