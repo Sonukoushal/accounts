@@ -204,21 +204,21 @@ class CartView(APIView):
             return Response({"message": "Product added to cart"}, status=201)
         return Response(serializer.errors, status=400)
     
-    def delete(self,request):
-        cart_id= request.data.get("cart_id")
+class CartDeleteView(APIView):
+    permission_classes = [IsAuthenticated]
 
-        if not cart_id:
-            return Response({"error": "cart_id is required to delete"}, status=400)
-        
+    def delete(self, request, cart_id):
         try:
-             cart_item = Cart.objects.get(id=cart_id)
+            cart_item = Cart.objects.get(id=cart_id)
 
-             if  cart_item.user != request.user:
-                  return Response({"error": "You can only delete your own cart items."}, status=403)
-             cart_item.delete()
-             return Response({"message": "Item removed from cart"}, status=200)
+            if cart_item.user != request.user:
+                return Response({"error": "You can only delete your own cart items."}, status=403)
+
+            cart_item.delete()
+            return Response({"message": "Item removed from cart"}, status=200)
+
         except Cart.DoesNotExist:
-            return  Response({"error": "Cart item not found"}, status=404)
+            return Response({"error": "Cart item not found"}, status=404)
               
             
          
