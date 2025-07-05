@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import CustomUser
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken  
-from .models import PasswordResetOTP , Product ,Cart
+from .models import PasswordResetOTP , Product ,Cart,ProductImage
 from django.core.mail import send_mail
 from django.utils import timezone
 import random
@@ -204,7 +204,6 @@ class ProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = [
             'id',
-            'image',
             'brand_name',
             'product_name',
             'product_id',
@@ -213,6 +212,11 @@ class ProductSerializer(serializers.ModelSerializer):
             'description',
             'specification'
         ]
+
+class ProductImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductImage
+        fields = ['id', 'product', 'image', 'uploaded_at']
 
 class CartSerializer(serializers.ModelSerializer):
     class Meta:

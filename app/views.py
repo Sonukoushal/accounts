@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import SignupSerializer, CustomLoginSerializer, ResendOTPSerializer,ProductSerializer,CartSerializer
+from .serializers import SignupSerializer, CustomLoginSerializer, ResendOTPSerializer,ProductSerializer,CartSerializer,ProductImageSerializer
 from .serializers import SendOTPSerializer,UserListSerializer,SuperUserActionSerializer,SetNewPasswordSerializer, OTPVerifySerializer, OTPRequestHistorySerializer, LoginHistorySerializer
 from .models import PasswordResetOTP,CustomUser,OTPRequestHistory, LoginHistory,Product,Cart
 from django.utils import timezone
@@ -175,6 +175,16 @@ class ProductView(APIView):
             serializer.save()
             return Response({"message": "Product created successfully."}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class ProductImageUploadView(APIView):
+    permission_classes = [IsAuthenticated]  # Optional: Only allow admin
+
+    def post(self, request):
+        serializer = ProductImageSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'message': 'Image uploaded successfully'}, status=201)
+        return Response(serializer.errors, status=400)
     
 class CartView(APIView):
     permission_classes = [IsAuthenticated]
