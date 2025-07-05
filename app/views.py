@@ -189,11 +189,6 @@ class ProductImageUploadView(APIView):
 class CartView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get_permissions(self):
-        if self.request.method == 'POST':
-            return [IsAuthenticated(), IsSuperUserOnly()]
-        return [IsAuthenticated()]
-
     def get(self, request):
         # Only get carts of the logged-in user
         carts = Cart.objects.filter(user=request.user)
