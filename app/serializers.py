@@ -219,10 +219,17 @@ class ProductImageSerializer(serializers.ModelSerializer):
         fields = ['id', 'product', 'image', 'uploaded_at']
 
 class CartSerializer(serializers.ModelSerializer):
+    product = ProductSerializer(read_only=True)  # GET ke liye full detail
+    product_id = serializers.PrimaryKeyRelatedField(
+        queryset=Product.objects.all(),
+        source='product',  # product_id will set product ForeignKey
+        write_only=True
+    )
+
     class Meta:
         model = Cart
-        fields = ['id', 'user', 'product', 'product_id', 'added_at']
-        read_only_fields = ['user']  
+        fields = ['id', 'user', 'product', 'product_id', 'quantity', 'added_at']
+        read_only_fields = ['user']
 
     def validate(self, attrs):
         request = self.context.get('request')
@@ -234,7 +241,6 @@ class CartSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         request = self.context.get('request')
-        user = request.user
-        validated_data['user'] = user  
+        validated_data['user'] = request.user
         return super().create(validated_data)
                                              
