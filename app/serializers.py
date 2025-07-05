@@ -219,12 +219,16 @@ class ProductImageSerializer(serializers.ModelSerializer):
         fields = ['id', 'product', 'image', 'uploaded_at']
 
 class CartSerializer(serializers.ModelSerializer):
+    product = ProductSerializer(read_only=True)  # GET ke liye full product detail
+    product_id = serializers.PrimaryKeyRelatedField(
+        queryset=Product.objects.all(), write_only=True, source='product'  # POST ke liye
+    )
+
     class Meta:
         model = Cart
-        fields = ['id', 'user', 'product', 'added_at']
+        fields = ['id', 'product', 'product_id', 'quantity', 'added_at']
 
     def validate(self, attrs):
-        user = attrs.get('user')
         product = attrs.get('product')
         if Cart.objects.filter(user=user, product=product).exists():
             raise serializers.ValidationError("Product already in cart for this user.")

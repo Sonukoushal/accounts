@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import SignupView, CustomLoginView ,SendOTPView, VerifyOTPView, SetNewPasswordView,ResendOTPView,MakeSuperUserView,UserListView, RevokeSuperUserView,OTPRequestHistoryView,ProductView,CartView,ProductImageUploadView
+from .views import SignupView, CustomLoginView ,SendOTPView, VerifyOTPView, SetNewPasswordView,ResendOTPView,MakeSuperUserView,UserListView, RevokeSuperUserView,OTPRequestHistoryView,ProductView,CartView,ProductImageUploadView,CartDeleteView,CartListView
 from rest_framework_simplejwt.views import TokenRefreshView
 from django.conf import settings
 from django.conf.urls.static import static
@@ -24,5 +24,7 @@ urlpatterns = [
     path("product/",ProductView.as_view()),
     path("Cart/",CartView.as_view()),
     path('upload-product-image/', ProductImageUploadView.as_view()),
+    path("cart/<int:cart_id>/", CartDeleteView.as_view()), 
+    path('cart/list/', CartListView.as_view(), name='cart-list'),
 ]
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

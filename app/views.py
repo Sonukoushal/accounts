@@ -189,12 +189,6 @@ class ProductImageUploadView(APIView):
 class CartView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
-        # Only get carts of the logged-in user
-        carts = Cart.objects.filter(user=request.user)
-        serializer = CartSerializer(carts, many=True)
-        return Response(serializer.data, status=200)
-
     def post(self, request):
         data = request.data.copy()
         data['user'] = request.user.id  # Automatically add user
@@ -219,6 +213,14 @@ class CartDeleteView(APIView):
 
         except Cart.DoesNotExist:
             return Response({"error": "Cart item not found"}, status=404)
+
+class CartListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        carts = Cart.objects.filter(user=request.user)
+        serializer = CartSerializer(carts, many=True)
+        return Response(serializer.data, status=200)
               
             
          
