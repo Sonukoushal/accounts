@@ -219,10 +219,10 @@ class ProductImageSerializer(serializers.ModelSerializer):
         fields = ['id', 'product', 'image', 'uploaded_at']
 
 class CartSerializer(serializers.ModelSerializer):
-    product = ProductSerializer(read_only=True)  # GET ke liye full detail
+    product = ProductSerializer(read_only=True)  # GET ke liye product detail
     product_id = serializers.PrimaryKeyRelatedField(
         queryset=Product.objects.all(),
-        source='product',  # product_id will set product ForeignKey
+        source='product',
         write_only=True
     )
 
@@ -235,12 +235,13 @@ class CartSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         user = request.user
         product = attrs.get('product')
-        if Cart.objects.filter(user=user, product=product).exists():
-            raise serializers.ValidationError("Product already in cart.")
+
+        # If already in cart, raise error (POST only)
+        if self.context['request'].method == 'POST':
+            if Cart.objects.filter(user=user, product=product).exists():
+                raise serializers.ValidationError("Product already in cart.")
         return attrs
 
     def create(self, validated_data):
-        request = self.context.get('request')
-        validated_data['user'] = request.user
+        validated_data['user'] = self.context['request'].user
         return super().create(validated_data)
-                                             

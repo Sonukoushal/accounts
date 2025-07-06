@@ -186,40 +186,49 @@ class ProductImageUploadView(APIView):
             return Response({'message': 'Image uploaded successfully'}, status=201)
         return Response(serializer.errors, status=400)
     
-class CartView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request):
-       serializer = CartSerializer(data=request.data, context={'request': request})
-       if serializer.is_valid():
-        serializer.save()
-        return Response({"message": "Product added to cart"}, status=201)
-       return Response(serializer.errors, status=400)
-    
-class CartDeleteView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def delete(self, request, cart_id):
-        try:
-            cart_item = Cart.objects.get(id=cart_id)
-
-            if cart_item.user != request.user:
-                return Response({"error": "You can only delete your own cart items."}, status=403)
-
-            cart_item.delete()
-            return Response({"message": "Item removed from cart"}, status=200)
-
-        except Cart.DoesNotExist:
-            return Response({"error": "Cart item not found"}, status=404)
-
 class CartListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        carts = Cart.objects.filter(user=request.user)
-        serializer = CartSerializer(carts, many=True)
-        return Response(serializer.data, status=200)
-              
-            
-         
-             
+        cart_items = Cart.objects.filter(user=request.user)
+        serializer = CartSerializer(cart_items, many=True)
+        return Response(serializer.data)
+
+
+class CartAddView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = CartSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Product added to cart"}, status=201)
+        return Response(serializer.errors, status=400)
+
+
+class CartUpdateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, pk):  # pk = cart item id
+        try:
+            cart_item = Cart.objects.get(id=pk, user=request.user)
+        except Cart.DoesNotExist:
+            return Response({"error": "Item not found"}, status=404)
+
+        serializer = CartSerializer(cart_item, data=request.data, context={'request': request}, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "Cart item updated"})
+        return Response(serializer.errors, status=400)
+
+
+class CartDeleteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk):  # pk = cart item id
+        try:
+            cart_item = Cart.objects.get(id=pk, user=request.user)
+        except Cart.DoesNotExist:
+            return Response({"error": "Item not found"}, status=404)
+        cart_item.delete()
+        return Response({"message": "Item removed from cart"}, status=204)

@@ -79,8 +79,12 @@ class Cart(models.Model):
          quantity = models.PositiveIntegerField(default=1)
          added_at = models.DateTimeField(auto_now_add=True)
 
-         def __str__(self):
-            return f"{self.user.email} - {self.product.product_name} x {self.quantity}"
+         class Meta:
+            unique_together = ('user', 'product')
 
+         def __str__(self):
+          return f"{self.user.username} - {self.product.name} x {self.quantity}"
+
+    
 
     
