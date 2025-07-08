@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import SignupView, CustomLoginView ,SendOTPView, VerifyOTPView, SetNewPasswordView,ResendOTPView,MakeSuperUserView,UserListView, RevokeSuperUserView,OTPRequestHistoryView,ProductView,ProductImageUploadView,CartListView, CartAddView, CartUpdateView, CartDeleteView
+from .views import SignupView, CustomLoginView ,SendOTPView, VerifyOTPView, SetNewPasswordView,ResendOTPView,MakeSuperUserView,UserListView, RevokeSuperUserView,OTPRequestHistoryView,ProductImageUploadView,CartListView, CartAddView, CartUpdateView, CartDeleteView,ProductCreateView,ProductListView,ProductUpdateView,ProductDeleteView
 from rest_framework_simplejwt.views import TokenRefreshView
 from django.conf import settings
 from django.conf.urls.static import static
@@ -21,7 +21,10 @@ urlpatterns = [
     path('otphistory/',OTPRequestHistoryView.as_view()),
 
     #----------------------------product---------------
-    path("product/",ProductView.as_view()),
+    path('product/create/', ProductCreateView.as_view(), name='product-create'),
+    path('product/list/', ProductListView.as_view(), name='product-list'),
+    path('product/update/<int:pk>/', ProductUpdateView.as_view(), name='product-update'),
+    path('product/delete/<int:pk>/', ProductDeleteView.as_view(), name='product-delete'),
     path('upload-product-image/', ProductImageUploadView.as_view()),
     path('cart/', CartListView.as_view()),         # GET: list cart
     path('cart/add/', CartAddView.as_view()),      # POST: add item

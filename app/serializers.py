@@ -210,8 +210,27 @@ class ProductSerializer(serializers.ModelSerializer):
             'price',
             'quantity',
             'description',
-            'specification'
+            'specification',
+            
         ]
+    def validate_specification(self, value):
+        required_keys = [
+             "frame_width",
+              "frame_size",
+              "material",
+              "shape",
+              "weight"
+        ]
+
+        missing_keys = [key for key in required_keys if key not in value]
+
+        if missing_keys:
+            raise serializers.ValidationError(
+                f"Missing keys in specification: {', '.join(missing_keys)}"
+            )
+
+        return value
+    
 
 class ProductImageSerializer(serializers.ModelSerializer):
     class Meta:
