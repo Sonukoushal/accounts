@@ -3,14 +3,14 @@ from rest_framework.response import Response
 from rest_framework import status
 from .serializers import SignupSerializer, CustomLoginSerializer, ResendOTPSerializer,ProductSerializer,CartSerializer,ProductImageSerializer
 from .serializers import SendOTPSerializer,UserListSerializer,SuperUserActionSerializer,SetNewPasswordSerializer, OTPVerifySerializer, OTPRequestHistorySerializer, LoginHistorySerializer
-from .models import PasswordResetOTP,CustomUser,OTPRequestHistory, LoginHistory,Product,Cart
+from .models import PasswordResetOTP,CustomUser,OTPRequestHistory, LoginHistory,Product,Cart,ProductImage
 from django.utils import timezone
 from datetime import timedelta
 from rest_framework_simplejwt.tokens import RefreshToken
 from .permissions import IsSuperUserOnly
 from .utils import get_client_ip 
 from rest_framework.permissions import IsAuthenticated
-from .permissions import IsSuperUserOnly
+from rest_framework.parsers import MultiPartParser, FormParser
 
 
 
@@ -155,36 +155,72 @@ class LoginHistoryView(APIView):
     
 #--------------product-----------------
 
-class ProductView(APIView):
-    permission_classes = [IsAuthenticated]  # Har user ke liye auth required
-
-    def get_permissions(self):
-        # GET ke liye normal user, POST ke liye superuser
-        if self.request.method == 'POST':
-            return [IsAuthenticated(), IsSuperUserOnly()]
-        return [IsAuthenticated()]
-
-    def get(self, request):
-        products = Product.objects.all()
-        serializer = ProductSerializer(products, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+class ProductCreateView(APIView):
+    permission_classes = [IsAuthenticated, IsSuperUserOnly]
 
     def post(self, request):
         serializer = ProductSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response({"message": "Product created successfully."}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"message": "Product created successfully."}, status=201)
+        return Response(serializer.errors, status=400)
     
-class ProductImageUploadView(APIView):
-    permission_classes = [IsAuthenticated]  # Optional: Only allow admin
+class ProductListView(APIView):
+    permission_classes = [IsAuthenticated]
 
-    def post(self, request):
-        serializer = ProductImageSerializer(data=request.data)
+    def get(self, request):
+        products = Product.objects.all()
+        serializer = ProductSerializer(products, many=True)
+        return Response(serializer.data, status=200)
+    
+class ProductUpdateView(APIView):
+    permission_classes = [IsAuthenticated, IsSuperUserOnly]
+
+    def put(self, request, pk):
+        try:
+            product = Product.objects.get(pk=pk)
+        except Product.DoesNotExist:
+            return Response({"error": "Product not found"}, status=404)
+
+        serializer = ProductSerializer(product, data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response({'message': 'Image uploaded successfully'}, status=201)
+            return Response({"message": "Product updated successfully"})
         return Response(serializer.errors, status=400)
+    
+class ProductDeleteView(APIView):
+    permission_classes = [IsAuthenticated, IsSuperUserOnly]
+
+    def delete(self, request, pk):
+        try:
+            product = Product.objects.get(pk=pk)
+        except Product.DoesNotExist:
+            return Response({"error": "Product not found"}, status=404)
+
+        product.delete()
+        return Response({"message": "Product deleted successfully"}, status=204)
+    
+class ProductImageUploadView(APIView):
+    parser_classes = [MultiPartParser, FormParser]  # handle file uploads
+    permission_classes = [IsAuthenticated]  # optional
+
+    def post(self, request):
+        product_id = request.data.get('product')  # product id from form
+        images = request.FILES.getlist('image')   # get multiple images
+
+        if not product_id:
+            return Response({"error": "Product ID is required"}, status=400)
+
+        try:
+            product = Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            return Response({"error": "Product not found"}, status=404)
+
+        # Save all images
+        for img in images:
+            ProductImage.objects.create(product=product, image=img)
+
+        return Response({"message": "Images uploaded successfully"}, status=201)
     
 class CartListView(APIView):
     permission_classes = [IsAuthenticated]
