@@ -199,7 +199,15 @@ class LoginHistorySerializer(serializers.ModelSerializer):
 
 
 #-------------------ProductSerializer------------------------------
+class ProductImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductImage
+        fields = ['id','product', 'image', 'uploaded_at']
+
+
+
 class ProductSerializer(serializers.ModelSerializer):
+    images = ProductImageSerializer(many=True, read_only=True)
     class Meta:
         model = Product
         fields = [
@@ -233,10 +241,7 @@ class ProductSerializer(serializers.ModelSerializer):
         return value
     
 
-class ProductImageSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ProductImage
-        fields = ['id', 'product', 'image', 'uploaded_at']
+
 
 class CartSerializer(serializers.ModelSerializer):
     product = ProductSerializer(read_only=True)  # GET ke liye product detail
