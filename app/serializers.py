@@ -211,6 +211,7 @@ class ProductSerializer(serializers.ModelSerializer):
             'quantity',
             'description',
             'specification',
+            'images'
             
         ]
     def validate_specification(self, value):
