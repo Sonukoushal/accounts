@@ -1,15 +1,14 @@
 from rest_framework import serializers
-from .models import CustomUser
-from django.contrib.auth import get_user_model
-from rest_framework_simplejwt.tokens import RefreshToken  
-from .models import PasswordResetOTP , Product ,Cart,ProductImage
+from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.mail import send_mail
 from django.utils import timezone
-import random
-from .models import CustomUser, PasswordResetOTP, OTPRequestHistory, LoginHistory
 from datetime import timedelta
+import random
 
-
+from .models import (
+    CustomUser, PasswordResetOTP, OTPRequestHistory, LoginHistory,
+    Product, Cart, ProductImage, Address, Order, OrderItem
+)
 
 # ------------------- Signup Serializer -------------------
 class SignupSerializer(serializers.ModelSerializer):
@@ -28,10 +27,10 @@ class SignupSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        validated_data.pop('confirm_password')  # Don't save confirm_password
-        user = CustomUser.objects.create_user(**validated_data)
-        return user
-    
+        validated_data.pop('confirm_password')
+        return CustomUser.objects.create_user(**validated_data)
+
+
 class UserListSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
@@ -39,10 +38,8 @@ class UserListSerializer(serializers.ModelSerializer):
 
 
 # ------------------- Custom Login Serializer -------------------
-User = get_user_model()
-
 class CustomLoginSerializer(serializers.Serializer):
-    email= serializers.CharField()
+    email = serializers.CharField()
     password = serializers.CharField(write_only=True)
 
     def validate(self, data):
@@ -50,11 +47,11 @@ class CustomLoginSerializer(serializers.Serializer):
         password = data.get("password")
 
         try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
+            user = CustomUser.objects.get(email=email)
+        except CustomUser.DoesNotExist:
             try:
-                user = User.objects.get(phone=email)
-            except User.DoesNotExist:
+                user = CustomUser.objects.get(phone=email)
+            except CustomUser.DoesNotExist:
                 raise serializers.ValidationError("Invalid email or phone")
 
         if not user.check_password(password):
@@ -74,13 +71,13 @@ class CustomLoginSerializer(serializers.Serializer):
                 "phone": user.phone,
             }
         }
-    
+
+
+# ------------------- OTP Serializers -------------------
 class SendOTPSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
     def validate_email(self, value):
-        # Check if user exists
-        from .models import CustomUser
         if not CustomUser.objects.filter(email=value).exists():
             raise serializers.ValidationError("User with this email does not exist.")
         return value
@@ -88,21 +85,15 @@ class SendOTPSerializer(serializers.Serializer):
     def create(self, validated_data):
         email = validated_data['email']
         otp = str(random.randint(100000, 999999))
+        PasswordResetOTP.objects.create(email=email, otp=otp)
 
-        # Save to DB
-        otp_instance=PasswordResetOTP.objects.create(email=email, otp=otp)
-        
-
-        # Send email
         send_mail(
             subject="Your OTP for Password Reset",
             message=f"Your OTP is: {otp}",
-            from_email="yourprojectemail@gmail.com",  # same as EMAIL_HOST_USER
+            from_email="yourprojectemail@gmail.com",
             recipient_list=[email],
         )
-        #return {"message": "OTP sent to your email."}
-        return otp_instance
-    
+        return {"message": "OTP sent successfully."}
 
 
 class ResendOTPSerializer(serializers.Serializer):
@@ -115,22 +106,21 @@ class ResendOTPSerializer(serializers.Serializer):
         PasswordResetOTP.objects.filter(email=email).delete()
         PasswordResetOTP.objects.create(email=email, otp=otp)
 
-        # OTP Email bhejna
         send_mail(
             subject="Your New OTP",
             message=f"Your OTP is: {otp}",
             from_email="yourprojectemail@gmail.com",
             recipient_list=[email]
         )
+        return {"message": "OTP resent successfully."}
 
-        return {"message": "OTP resent successfully."}    
 
 class OTPVerifySerializer(serializers.Serializer):
     otp = serializers.IntegerField()
 
     def validate(self, attrs):
         otp = attrs.get("otp")
-        email = self.context.get("email")  # context se email mila
+        email = self.context.get("email")
 
         if not email:
             raise serializers.ValidationError("Email not provided")
@@ -167,7 +157,8 @@ class SetNewPasswordSerializer(serializers.Serializer):
         PasswordResetOTP.objects.filter(email=email).delete()
         return user
 
-# Reusable for both make and revoke
+
+# ------------------- SuperUser Promote/Demote -------------------
 class SuperUserActionSerializer(serializers.Serializer):
     user_id = serializers.IntegerField()
 
@@ -176,7 +167,7 @@ class SuperUserActionSerializer(serializers.Serializer):
         if not request_user.is_authenticated or not request_user.is_superuser_custom:
             raise serializers.ValidationError("Only superusers can perform this action.")
         return data
-    
+
     def create(self, validated_data):
         user_id = validated_data['user_id']
         try:
@@ -186,11 +177,14 @@ class SuperUserActionSerializer(serializers.Serializer):
             return user
         except CustomUser.DoesNotExist:
             raise serializers.ValidationError("User not found.")
-        
+
+
+# ------------------- History Serializers -------------------
 class OTPRequestHistorySerializer(serializers.ModelSerializer):
     class Meta:
         model = OTPRequestHistory
         fields = ['id', 'user', 'requested_at']
+
 
 class LoginHistorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -198,53 +192,37 @@ class LoginHistorySerializer(serializers.ModelSerializer):
         fields = ['id', 'user', 'login_time', 'ip_address', 'user_agent']
 
 
-#-------------------ProductSerializer------------------------------
+# ------------------- Product Serializers -------------------
 class ProductImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductImage
-        fields = ['id','product', 'image', 'uploaded_at']
-
+        fields = ['id', 'product', 'image', 'uploaded_at']
 
 
 class ProductSerializer(serializers.ModelSerializer):
     images = ProductImageSerializer(many=True, read_only=True)
+
     class Meta:
         model = Product
         fields = [
-            'id',
-            'brand_name',
-            'product_name',
-            'product_id',
-            'price',
-            'quantity',
-            'description',
-            'specification',
-            'images'
-            
-        ]
-    def validate_specification(self, value):
-        required_keys = [
-             "frame_width",
-              "frame_size",
-              "material",
-              "shape",
-              "weight"
+            'id', 'brand_name', 'product_name', 'product_id',
+            'price', 'quantity', 'description', 'specification', 'images'
         ]
 
+    def validate_specification(self, value):
+        required_keys = ["frame_width", "frame_size", "material", "shape", "weight"]
         missing_keys = [key for key in required_keys if key not in value]
 
         if missing_keys:
             raise serializers.ValidationError(
                 f"Missing keys in specification: {', '.join(missing_keys)}"
             )
-
         return value
-    
 
 
-
+# ------------------- Cart Serializer -------------------
 class CartSerializer(serializers.ModelSerializer):
-    product = ProductSerializer(read_only=True)  # GET ke liye product detail
+    product = ProductSerializer(read_only=True)
     product_id = serializers.PrimaryKeyRelatedField(
         queryset=Product.objects.all(),
         source='product',
@@ -257,11 +235,9 @@ class CartSerializer(serializers.ModelSerializer):
         read_only_fields = ['user']
 
     def validate(self, attrs):
-        request = self.context.get('request')
-        user = request.user
+        user = self.context['request'].user
         product = attrs.get('product')
 
-        # If already in cart, raise error (POST only)
         if self.context['request'].method == 'POST':
             if Cart.objects.filter(user=user, product=product).exists():
                 raise serializers.ValidationError("Product already in cart.")
@@ -270,3 +246,41 @@ class CartSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data['user'] = self.context['request'].user
         return super().create(validated_data)
+
+
+# ------------------- Address Serializer -------------------
+class AddressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Address
+        fields = [
+            'id',         #  PK field (important)
+            'user',       #  read-only
+            'full_name',
+            'phone',
+            'pincode',
+            'house',
+            'area',
+            'city',
+            'state',
+            'created_at'  # 🔒 read-only
+        ]
+        read_only_fields = ['user', 'created_at']
+
+
+# ------------------- Order Serializers -------------------
+class OrderSerializer(serializers.ModelSerializer):
+    address = AddressSerializer(read_only=True)
+    address_id = serializers.IntegerField(write_only=True)
+
+    class Meta:
+        model = Order
+        fields = ['id', 'user', 'address', 'address_id', 'payment_mode', 'status', 'created_at']
+        read_only_fields = ['id', 'user', 'status', 'created_at']
+
+
+class OrderItemSerializer(serializers.ModelSerializer):
+    product = ProductSerializer(read_only=True)
+
+    class Meta:
+        model = OrderItem
+        fields = ['product', 'quantity', 'price']
